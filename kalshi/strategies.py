@@ -29,7 +29,7 @@ def v1_rule():
     }
 
 
-def v2_rule(fit_before_ts=None, eval_after_ts=None):
+def v2_rule(eval_after_ts=None):
     """V1 + market-selection filters. Filters chosen ONCE from V1
     diagnostics on the fit window only (first 70% of dev by expiry).
     Fit-window evidence (n=226, exp=-4.62c):
@@ -40,8 +40,8 @@ def v2_rule(fit_before_ts=None, eval_after_ts=None):
         unpopulated in this dataset, so market volume is the proxy.)
       - TTE showed no exploitable variation (median 12.6d, 97% in 7-14d)
         -> max_tte_days left at 14.
-    Evaluated ONLY on the eval window (last 30% by expiry)."""
-    cut = fit_eval_cut(0.7)
+    eval_after_ts: pass fit_eval_cut(0.7) to evaluate on the eval window
+    only. If None, evaluates on all dev (not the honest V2 protocol)."""
     return {
         "version": V2["name"],
         "side": "buy_yes",
@@ -50,7 +50,7 @@ def v2_rule(fit_before_ts=None, eval_after_ts=None):
         "max_tte_days": MAX_TTE_DAYS,
         "exclude_series": {"KXCPI", "KXNBAGAME"},
         "min_market_volume": 100000,
-        "eval_after_ts": cut,
+        "eval_after_ts": eval_after_ts,
     }
 
 
@@ -69,7 +69,7 @@ def v3_rule():
     }
 
 
-def v4_rule():
+def v4_rule(eval_after_ts=None):
     """Event-type specialization from V1-V3 per-series diagnostics.
     Fit-window evidence:
       - V1: KXFED (-0.27c) and KXNHLGAME (-0.16c) were the only ~flat
@@ -77,8 +77,8 @@ def v4_rule():
       - V3: EVERY series negative (-1.37c to -6.55c); tail-selling has no
         viable category -> V4 stays buy-side only.
     V4 = V1 rule restricted to the two least-bad series + the V2 volume
-    filter. Evaluated ONLY on the eval window (last 30% by expiry)."""
-    cut = fit_eval_cut(0.7)
+    filter. eval_after_ts: pass fit_eval_cut(0.7) for the honest protocol
+    (eval window only)."""
     return {
         "version": V4["name"],
         "side": "buy_yes",
@@ -87,7 +87,7 @@ def v4_rule():
         "max_tte_days": MAX_TTE_DAYS,
         "only_series": {"KXNHLGAME", "KXFED"},
         "min_market_volume": 100000,
-        "eval_after_ts": cut,
+        "eval_after_ts": eval_after_ts,
     }
 
 

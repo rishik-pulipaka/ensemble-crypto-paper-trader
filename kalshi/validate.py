@@ -13,12 +13,13 @@ import sys
 from . import strategies
 from .engine import generate_trades, summarize
 from .kalshi_config import V3
+from .strategies import fit_eval_cut
 
 RULES = {
     "v1": strategies.v1_rule,
-    "v2": strategies.v2_rule,
+    "v2": lambda: strategies.v2_rule(eval_after_ts=fit_eval_cut(0.7)),
     "v3": strategies.v3_rule,
-    "v4": strategies.v4_rule,
+    "v4": lambda: strategies.v4_rule(eval_after_ts=fit_eval_cut(0.7)),
     "v5": strategies.v5_rule,
 }
 
