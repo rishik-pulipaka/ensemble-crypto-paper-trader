@@ -6,23 +6,27 @@ All money figures are fractions unless noted.
 
 # ---------------------------------------------------------------- data
 PAIRS = ["BTC-USD", "ETH-USD"]
-GRANULARITY_SECONDS = 60          # 1-minute bars
+GRANULARITY_SECONDS = 900         # v2: 15-minute bars (resampled from 1-min).
+                                  # Hypothesis: bigger per-trade moves make the
+                                  # fixed bps fee a smaller fraction of gross.
 HISTORY_YEARS = 2                 # target depth for the initial backfill
-DB_PATH = "data/market.db"        # relative to project root
+DB_PATH = "data/market.db"        # relative to project root (always 1-min)
 
 # ---------------------------------------------------------------- costs
 # Taker-equivalent fees + slippage, applied per side.
-# 15 bps/side is a MIDDLE estimate: real retail taker fees on major venues
-# run 40-60 bps/side (which would make results worse), while passive
-# maker fills run lower (which would make results better). Round-trip drag
-# modeled here ~= 40 bps. If the strategy set cannot survive this, it
-# cannot survive reality either.
-FEE_PER_SIDE = 0.0015
-SLIPPAGE_PER_SIDE = 0.0005
+# v2 uses REALISTIC retail costs: 50 bps/side fee (midpoint of the 40-60 bps
+# retail taker range on major venues) + 10 bps/side slippage.
+# Round-trip drag ~= 120 bps. v1's 15 bps/side was optimistic; any version
+# that cannot survive realistic costs is dead on arrival in production.
+FEE_PER_SIDE = 0.005
+SLIPPAGE_PER_SIDE = 0.001
 
 # ---------------------------------------------------------------- strategies
+# v2: bar counts preserved from v1 EXCEPT VWAP_WINDOW, which is rescaled to
+# keep its 12h wall-time meaning on 15-min bars (48 x 15min = 12h). The
+# hypothesis under test is timeframe, not parameter values.
 DONCHIAN_PERIOD = 20          # bars for channel high/low
-VWAP_WINDOW = 720             # rolling window (bars) for session VWAP proxy; 720 = 12h
+VWAP_WINDOW = 48              # rolling window (bars) for session VWAP proxy; 48 = 12h @15m
 VWAP_Z_ENTRY = 2.0            # |z| >= this to vote
 RSI_PERIOD = 14
 ROC_PERIOD = 12               # rate-of-change lookback (bars)

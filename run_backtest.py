@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config
 from backtest import metrics, walk_forward
 from data.fetcher import backfill_years
+from data.resample import to_ohlcv
 from data.store import CandleStore
 from strategies.library import ALL_STRATEGIES
 
@@ -26,15 +27,20 @@ from strategies.library import ALL_STRATEGIES
 def ensure_data(pairs: list[str], years: float) -> dict:
     store = CandleStore(Path(__file__).resolve().parent / config.DB_PATH)
     data = {}
+    gran = config.GRANULARITY_SECONDS
     for pair in pairs:
         cov = store.coverage(pair)
+        # DB always stores 1-min bars; need enough of them for `years` at any
+        # resampled granularity.
         need = int(365 * years * 24 * 60 * 0.9)
         if cov["bars"] < need:
             print(f"[data] {pair}: have {cov['bars']} bars, backfilling ~{years}y...",
                   flush=True)
-            backfill_years(pair, years, store, config.GRANULARITY_SECONDS)
+            backfill_years(pair, years, store, 60)
         df = store.load(pair)
-        print(f"[data] {pair}: {len(df)} bars "
+        if gran != 60:
+            df = to_ohlcv(df, gran)
+        print(f"[data] {pair}: {len(df)} bars @ {gran}s "
               f"({df['datetime'].iloc[0].date()} -> {df['datetime'].iloc[-1].date()})")
         data[pair] = df
     store.close()
