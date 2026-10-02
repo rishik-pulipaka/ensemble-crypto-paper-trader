@@ -159,7 +159,7 @@ Lockbox: markets expiring >= 2026-07-02 quarantined; one-shot
 earned it.** Walk-forward: 70/30 split by expiry for adaptive versions
 (V2/V4); V1/V3 params frozen a priori (OOS by construction).
 
-**Total variants tested: 11 (6 crypto + 1 swing + 5 kalshi, counting V5)**
+**Total variants tested: 12 (6 crypto + 1 swing + 5 kalshi)**
 
 ### kalshi-v1 — favorite-longshot bias fade (buy YES, ask >= 85c, <=14d to expiry)
 - Hypothesis: crowd underprices high-probability contracts; buy the favorite.
