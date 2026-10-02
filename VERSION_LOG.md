@@ -23,7 +23,20 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   and discarded, so no design contamination carries forward. From v3 on, the
   quarantine is absolute.
 
-**Total variants tested: 3**
+**Total variants tested: 4**
+
+## v4 — momentum_roc alone, 1-hour bars, taker, 50bps
+- Hypothesis: start from the best GROSS edge (+$42-46/trade) and shrink fee
+  drag via timeframe — wider stops → smaller notional for same risk dollars
+  → smaller absolute fees. momentum_roc only, 1h bars, BTC+ETH.
+- Result: KILL. 1,267 OOS trades, expectancy -$37.45/trade, win rate 36.8%,
+  profit factor 0.37, Sharpe -12.25. Holdout untouched.
+- Lesson: gross edge didn't survive OOS (scan was full-period; walk-forward
+  folds were worse), and fee drag at 50bps still overwhelmed. Two-part
+  problem: edge instability + fee level. Next: isolate WHERE the gross edge
+  lives — per-pair diagnostic showed ETH momentum gross +$120.60/trade
+  (1,391 trades, wr 0.41) vs BTC +$45.72. If that holds OOS, fees become
+  survivable.
 
 ## v3 — maker-only mean reversion (vwap_mr, chop, 15-min)
 - Hypothesis: spread capture. Maker fees (10bps) are 5x cheaper than taker

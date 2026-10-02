@@ -433,9 +433,50 @@ def walk_forward_maker(data: dict[str, pd.DataFrame], strategies,
     return {"trades": trades, "folds": fold_info, "bars": n}
 
 
+def walk_forward_single(data: dict[str, pd.DataFrame], strategies,
+                        bankroll: float) -> dict:
+    """Single-strategy walk-forward (taker or maker engine).
+
+    No ensemble weights — the strategy was selected before seeing the data.
+    Same expanding-train / next-segment-test fold structure; only the test
+    segments generate trades (OOS discipline preserved).
+    """
+    strats = {s.name: s for s in strategies}
+    name = config.SINGLE_STRATEGY
+    strat = strats[name]
+    n = min(len(df) for df in data.values())
+    data = {p: df.iloc[-n:].reset_index(drop=True) for p, df in data.items()}
+    splits = [int(n * f) for f in config.WALK_FORWARD_SPLITS]
+    oos_trades: list[pd.DataFrame] = []
+    fold_info = []
+    for k, s in enumerate(splits):
+        e = splits[k + 1] if k + 1 < len(splits) else n
+        fold_trades = []
+        for pair, df in data.items():
+            test = df.iloc[s:e].reset_index(drop=True)
+            sig = strat.generate(test)
+            reg = classify(test)
+            mask = reg.isin(config.SINGLE_REGIMES).to_numpy()
+            if config.EXECUTION_MODE == "maker":
+                t = simulate_maker(test, sig, mask, bankroll,
+                                   config.RISK_PER_TRADE, pair)
+            else:
+                t = simulate(test, sig["vote"].to_numpy(), sig["entry"].to_numpy(),
+                             sig["invalidation"].to_numpy(), mask, bankroll,
+                             config.RISK_PER_TRADE, pair)
+            fold_trades.append(t)
+        ft = pd.concat(fold_trades, ignore_index=True) if fold_trades else pd.DataFrame()
+        fold_info.append({"fold": k, "status": "ok", "trades": len(ft)})
+        oos_trades.append(ft)
+    trades = pd.concat(oos_trades, ignore_index=True) if oos_trades else pd.DataFrame()
+    return {"trades": trades, "folds": fold_info, "bars": n}
+
+
 def walk_forward(data: dict[str, pd.DataFrame], strategies,
                  bankroll: float) -> dict:
     """Expanding-train / next-segment-test. Returns OOS trades + diagnostics."""
+    if config.SINGLE_STRATEGY:
+        return walk_forward_single(data, strategies, bankroll)
     if config.EXECUTION_MODE == "maker":
         return walk_forward_maker(data, strategies, bankroll)
     # align on shortest pair

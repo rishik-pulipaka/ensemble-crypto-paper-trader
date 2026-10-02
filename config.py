@@ -5,10 +5,13 @@ All money figures are fractions unless noted.
 """
 
 # ---------------------------------------------------------------- data
-PAIRS = ["BTC-USD", "ETH-USD"]
-GRANULARITY_SECONDS = 900         # v2: 15-minute bars (resampled from 1-min).
-                                  # Hypothesis: bigger per-trade moves make the
-                                  # fixed bps fee a smaller fraction of gross.
+PAIRS = ["ETH-USD"]  # v5: ETH only. Diagnostic showed ETH momentum gross
+                     # +$120.60/trade vs BTC +$45.72 (1h, zero fees).
+                     # Hypothesis: edge concentrates in less-efficient,
+                     # higher-volatility markets.
+GRANULARITY_SECONDS = 3600         # v4: 1-hour bars (resampled from 1-min).
+                                  # Hypothesis: wider stops -> smaller notional
+                                  # for same risk -> smaller absolute fee drag.
 HISTORY_YEARS = 2                 # target depth for the initial backfill
 DB_PATH = "data/market.db"        # relative to project root (always 1-min)
 
@@ -22,16 +25,22 @@ FEE_PER_SIDE = 0.005
 SLIPPAGE_PER_SIDE = 0.001
 
 # ---------------------------------------------------------------- v3: maker execution
-# Edge hypothesis: profit from passive limit-order execution (spread capture),
-# not directional prediction. Maker fees are ~5x cheaper than taker, which
-# structurally changes the fee equation v1/v2 died on.
-EXECUTION_MODE = "maker"          # "taker" | "maker"
+# (retained for evaluate_holdout.py and future maker experiments)
 MAKER_STRATEGY = "vwap_mr"        # single regime-specialist (mean reversion)
 MAKER_REGIMES = ["chop"]          # only trade chop regimes
 MAKER_FEE_PER_SIDE = 0.001        # 10 bps maker (passive fills)
 MAKER_STOP_FEE_PER_SIDE = 0.005   # 50 bps taker (urgent stop exits)
 MAKER_OFFSET = 0.0005             # limit 5 bps better than signal price
 MAKER_MAX_WAIT_BARS = 4           # resting order valid 4 bars, then cancel
+
+# ---------------------------------------------------------------- v4: single momentum, hourly
+# Edge hypothesis: start from the best GROSS edge (momentum_roc +$42-46/trade
+# gross) and minimize fee drag via timeframe. Longer timeframe -> wider stops
+# -> smaller notional for the same risk dollars -> smaller absolute fees.
+# v4 tests momentum_roc alone on 1-hour bars with honest taker execution.
+EXECUTION_MODE = "taker"          # "taker" | "maker"
+SINGLE_STRATEGY = "momentum_roc"  # None = ensemble mode; set = single-strategy
+SINGLE_REGIMES = ["trend", "chop"]
 
 # ---------------------------------------------------------------- strategies
 # v2: bar counts preserved from v1 EXCEPT VWAP_WINDOW, which is rescaled to
