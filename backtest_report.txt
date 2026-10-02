@@ -1,0 +1,4 @@
+generated: 2026-10-02T02:33:54.756080+00:00
+pairs: ['BTC-USD']  bankroll: 10000.0
+folds: [{'fold': 0, 'status': 'dead-no-positive-expectancy'}, {'fold': 1, 'status': 'dead-no-positive-expectancy'}, {'fold': 2, 'status': 'dead-no-positive-expectancy'}]
+n_trades=0
