@@ -23,7 +23,35 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   and discarded, so no design contamination carries forward. From v3 on, the
   quarantine is absolute.
 
-**Total variants tested: 5**
+**Total variants tested: 6**
+
+## v6 — ETH momentum_roc, 1h, 3R targets, taker, 50bps
+- Hypothesis: payoff structure. Momentum profits are fat-tailed; 2R cuts
+  winners short. 3R lets the edge compound; lower win rate compensated by
+  larger winners. Best-combination: ETH + 1h + momentum + 3R.
+- Result: KILL. 475 OOS trades, expectancy -$37.46/trade, win rate 30.5%,
+  avg win $156.63 (nearly 2x v5's $75.74 — the 3R worked mechanically),
+  profit factor 0.56, Sharpe -6.13. Holdout untouched.
+- Lesson: 3R did exactly what it should (bigger winners, PF 0.46→0.56,
+  Sharpe -9.1→-6.1) but win rate fell 38%→30.5% and expectancy was
+  unchanged (-$34→-$37). The payoff reshuffle moved losses around; it
+  didn't create edge.
+
+## TRAJECTORY ASSESSMENT (v3→v6)
+- Expectancy/trade: -$43.04 → -$37.45 → -$33.99 → -$37.46. NOT trending
+  toward positive; stalled/worse on the last step.
+- Profit factor: 0.23 → 0.37 → 0.46 → 0.56. Improving, but from
+  catastrophic toward bad — not converging on viable (>1.2).
+- Sharpe: -16.3 → -12.3 → -9.1 → -6.1. Same story.
+- Verdict: FLAT. Six versions, zero with positive expectancy, zero with
+  200+ OOS trades and PF > 1.0. The loop stops here per the conditional
+  cap (flat trajectory, not promising). No version earned the holdout shot.
+- Root causes (confirmed across versions): (1) retail taker fees (50bps)
+  create ~$50-100/trade drag against $100 risk — requires >53% win rate
+  at 2R, which momentum can't deliver; (2) gross edges that appear in
+  full-period scans (+$120 ETH momentum) do not survive walk-forward OOS
+  (edge instability across time); (3) maker execution can't save negative
+  gross (v3: PF 0.23, adverse selection verified).
 
 ## v5 — ETH-only momentum_roc, 1-hour, taker, 50bps
 - Hypothesis: edge concentrates in less-efficient markets. Per-pair
