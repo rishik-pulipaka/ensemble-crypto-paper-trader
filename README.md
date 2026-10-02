@@ -93,3 +93,54 @@ python3 scripts/parallel_backfill.py --years 2 --workers 6
   profitability does not imply live profitability.
 - This is a research/education project, not financial advice. Expect it to
   fail the kill criteria. That outcome is valuable: it costs $0 to learn.
+
+---
+
+# Swing system (swing-v1) — long-only daily trend following
+
+A NEW system, not v7 of the intraday loop. It follows the v1-v6 trajectory
+gradient to its logical conclusion: longer holding periods where retail fees
+stop being the binding constraint.
+
+- **Data**: daily BTC/ETH bars from Coinbase public REST (no auth), 2015 to
+  now, cached in `data/market.db` as `BTC-USD:1D` / `ETH-USD:1D`.
+- **Variants** (`swing/signals.py`, all canonical parameters, fixed before
+  seeing results — nothing optimized):
+  - `tsmom` — 12-month (skip 1m) time-series momentum, monthly rebalance
+    (Moskowitz-Ooi-Pedersen)
+  - `donchian` — 100d breakout entry / 50d breakdown exit (turtle-style)
+  - `ma_cross` — daily SMA50/SMA200 cross, long-only
+- **Sizing** (`swing/engine.py`): turtle method — risk 1% of equity over the
+  initial 3xATR(20) stop distance, capped at 50% notional per position
+  (max one per pair, no leverage).
+- **Exits**: signal reversal OR 3xATR trailing stop (ratcheted up only),
+  whichever first. No profit targets.
+- **Costs**: 50 bps/side fee + 5 bps/side slippage, both sides.
+- **Execution**: signal decided at close of bar t-1, filled at open of bar t.
+  Proven by `swing/qa_swing.py` (6/6 checks).
+- **Validation**: `python3 -m swing.validate` — continuous run per pair over
+  the full dev window (params fixed, so all OOS by construction), trades
+  attributed to yearly folds for reporting. Kill: expectancy <= 0 or
+  < 100 OOS trades → exit 2.
+- **Lockbox**: most recent 12 months of daily bars quarantined
+  (`SWING_HOLDOUT_START_TS` in `swing/swing_config.py`); only
+  `swing/evaluate_holdout.py` may touch it, once, marker-guarded, and only
+  for a variant meeting the promising bar.
+
+## swing-v1 verdict: KILL (2026-10-02)
+
+| variant | OOS trades | exp/trade | win% | PF | Sharpe | max DD |
+|---------|-----------|-----------|------|-----|--------|--------|
+| tsmom | 221 | -$6.19 | 29.4% | 0.79 | -0.36 | -21.6% |
+| donchian | 165 | -$3.01 | 32.1% | 0.90 | -0.13 | -12.6% |
+| ma_cross | 191 | -$2.43 | 28.3% | 0.91 | -0.11 | -13.6% |
+
+All three negative after realistic fees with 165-221 OOS trades (solid
+statistical power). Classic trend profile (low win rate, bigger winners)
+but winners aren't big/frequent enough: PF 0.79-0.91 < 1. The swing
+gradient is exhausted — longer holding fixed the fee problem (fees now a
+few % of gross, not 96%) but revealed there is no gross edge either.
+One genuine design bug was found and fixed during QA (vol-targeting let a
+3xATR stop risk ~10%/trade; corrected to true 1%-risk turtle sizing —
+a spec-compliance fix, not optimization).
+Full report: `swing_report.txt`. Lockbox untouched (nothing earned it).

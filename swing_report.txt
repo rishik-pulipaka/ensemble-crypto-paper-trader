@@ -1,0 +1,46 @@
+generated: 2026-10-02T03:52:26.830022+00:00
+bankroll: 10000.0
+
+[tsmom]
+n_trades=221
+total_pnl=-1367.1188631244295
+expectancy=-6.186058204182939
+win_rate=0.29411764705882354
+avg_win=80.17717361121619
+avg_loss=-42.170738127265906
+profit_factor=0.7921880705649862
+sharpe_daily=-0.3598791541307631
+max_drawdown=-0.21623392383664733
+final_equity=8638.783537994519
+return_pct=-13.612164620054813
+folds=[('2017', 'BTC-USD', 26), ('2018', 'BTC-USD', 11), ('2019', 'BTC-USD', 10), ('2020', 'BTC-USD', 11), ('2021', 'BTC-USD', 19), ('2022', 'BTC-USD', 9), ('2023', 'BTC-USD', 6), ('2024', 'BTC-USD', 14), ('2025p', 'BTC-USD', 12), ('2017', 'ETH-USD', 8), ('2018', 'ETH-USD', 15), ('2019', 'ETH-USD', 5), ('2020', 'ETH-USD', 11), ('2021', 'ETH-USD', 13), ('2022', 'ETH-USD', 13), ('2023', 'ETH-USD', 10), ('2024', 'ETH-USD', 16), ('2025p', 'ETH-USD', 8)]
+
+[donchian]
+n_trades=165
+total_pnl=-497.11187167555033
+expectancy=-3.0127992222760627
+win_rate=0.3212121212121212
+avg_win=82.42635057782014
+avg_loss=-43.44382546696444
+profit_factor=0.8978336091138865
+sharpe_daily=-0.12925441993721312
+max_drawdown=-0.12613852512696574
+final_equity=9504.938628225344
+return_pct=-4.950613717746566
+folds=[('2017', 'BTC-USD', 27), ('2018', 'BTC-USD', 2), ('2019', 'BTC-USD', 8), ('2020', 'BTC-USD', 9), ('2021', 'BTC-USD', 17), ('2023', 'BTC-USD', 9), ('2024', 'BTC-USD', 8), ('2025p', 'BTC-USD', 8), ('2017', 'ETH-USD', 8), ('2018', 'ETH-USD', 5), ('2019', 'ETH-USD', 5), ('2020', 'ETH-USD', 11), ('2021', 'ETH-USD', 13), ('2022', 'ETH-USD', 1), ('2023', 'ETH-USD', 8), ('2024', 'ETH-USD', 13), ('2025p', 'ETH-USD', 9)]
+
+[ma_cross]
+n_trades=191
+total_pnl=-464.75230563813847
+expectancy=-2.433258144702296
+win_rate=0.28272251308900526
+avg_win=91.33385502830924
+avg_loss=-39.39255822749515
+profit_factor=0.9138834148239954
+sharpe_daily=-0.113741296558877
+max_drawdown=-0.13619089580655494
+final_equity=9541.641541362562
+return_pct=-4.5835845863743785
+folds=[('2017', 'BTC-USD', 26), ('2018', 'BTC-USD', 6), ('2019', 'BTC-USD', 9), ('2020', 'BTC-USD', 9), ('2021', 'BTC-USD', 19), ('2023', 'BTC-USD', 11), ('2024', 'BTC-USD', 12), ('2025p', 'BTC-USD', 15), ('2017', 'ETH-USD', 8), ('2018', 'ETH-USD', 5), ('2019', 'ETH-USD', 8), ('2020', 'ETH-USD', 11), ('2021', 'ETH-USD', 16), ('2022', 'ETH-USD', 1), ('2023', 'ETH-USD', 10), ('2024', 'ETH-USD', 13), ('2025p', 'ETH-USD', 8)]
+
+selected=ma_cross

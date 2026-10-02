@@ -115,3 +115,30 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   pre-fee.
 - Lesson: fee ratio is the binding constraint, not signal quality. Typical
   1-min trade captures moves too small to survive realistic costs.
+
+## swing-v1 — long-only daily trend following (NEW system, not v7)
+- Hypothesis: follow the v1-v6 trajectory gradient to its conclusion. v6's
+  lesson was that longer timeframes shrink fee drag; the swing system takes
+  it all the way: daily bars, holds of weeks/months, where 50bps/side fees
+  are a few % of gross instead of 96%. Independent research ranked this the
+  only angle with first-rate academic evidence (Moskowitz-Ooi-Pedersen;
+  Hurst et al.). Three canonical variants, parameters fixed before seeing
+  results (nothing optimized): tsmom (12-1m, monthly), donchian (100/50 +
+  3xATR trailing stop), ma_cross (SMA50/200 daily).
+- Data: 4,093 BTC + 3,788 ETH daily bars (2015/2016 -> 2026-10-02); dev
+  window excludes the fresh 12-month lockbox (2025-10-02 -> 2026-10-02).
+- Sizing: turtle 1%-risk over the 3xATR stop (a vol-targeting draft allowed
+  ~10%/trade — fixed as a spec-compliance bug during QA, not optimization).
+- Result: KILL. All three variants negative after realistic fees with
+  165-221 OOS trades each (solid power):
+  tsmom -$6.19/trade (PF 0.79, Sharpe -0.36, DD -21.6%);
+  donchian -$3.01/trade (PF 0.90, Sharpe -0.13, DD -12.6%);
+  ma_cross -$2.43/trade (PF 0.91, Sharpe -0.11, DD -13.6%).
+- Lesson: the fee problem is SOLVED at this horizon, but there is no gross
+  edge underneath — PF 0.79-0.91 with classic trend profile (26-32% win
+  rate, ~2x payoff) still loses. The gradient is exhausted: this was the
+  last structural direction with independent theoretical support.
+- Lockbox untouched (nothing earned the one shot). QA 6/6 (no-lookahead
+  proven, fees hand-verified, trailing stop verified, risk bounded,
+  fresh-checkout clean).
+- **Total variants tested: 7** (v1-v6 intraday + swing-v1).
