@@ -80,7 +80,11 @@ SCORE_THRESHOLD = 0.45        # |weighted score| as fraction of max possible
 RISK_PER_TRADE = 0.01         # 1% of bankroll risked per trade (cap)
 MAX_POSITIONS = 3             # max concurrent open positions
 MAX_DAILY_LOSS = 0.03         # halt all trading if down 3% on the day
-TP_MULTIPLE = 2.0             # take profit at 2R
+TP_MULTIPLE = 3.0             # v6: take profit at 3R (was 2R).
+                              # Hypothesis: momentum profits come from fat
+                              # tails; 2R cuts winners short. 3R lets the
+                              # edge compound; lower win rate compensated
+                              # by larger winners.
 STARTING_BANKROLL = 10000.0   # paper starting equity (USD)
 
 # ---------------------------------------------------------------- backtest

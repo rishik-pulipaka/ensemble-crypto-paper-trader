@@ -23,7 +23,19 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   and discarded, so no design contamination carries forward. From v3 on, the
   quarantine is absolute.
 
-**Total variants tested: 4**
+**Total variants tested: 5**
+
+## v5 — ETH-only momentum_roc, 1-hour, taker, 50bps
+- Hypothesis: edge concentrates in less-efficient markets. Per-pair
+  diagnostic: ETH momentum gross +$120.60/trade (1,391 trades, wr 0.41)
+  vs BTC +$45.72. If OOS holds, fees become survivable.
+- Result: KILL. 655 OOS trades, expectancy -$33.99/trade, win rate 38.2%,
+  profit factor 0.46, Sharpe -9.11. Holdout untouched.
+- Lesson: the +$120 gross was a full-period artifact; it did NOT survive
+  walk-forward OOS. Edge instability is now the confirmed second problem
+  (alongside fees). The gross edge exists in some periods and vanishes in
+  others. Next (v6): best-combination — ETH + 1h + momentum + 3R targets
+  (payoff-structure hypothesis: momentum profits are fat-tailed).
 
 ## v4 — momentum_roc alone, 1-hour bars, taker, 50bps
 - Hypothesis: start from the best GROSS edge (+$42-46/trade) and shrink fee
