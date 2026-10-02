@@ -8,6 +8,21 @@ Variant count is tracked here for multiple-testing discipline. Every version
 adds to the burden: a barely-positive result after N failed attempts is
 treated as noise until proven otherwise on 200+ out-of-sample trades.
 
+## LOCKBOX — final holdout (quarantined 2026-10-01, enforced in code)
+- Range: **2026-06-14T16:29:00Z → 2026-10-02** (most recent ~15% of history:
+  157,546 1-min bars/pair; larger than 3 months, per the 15%-or-3mo rule).
+- Enforced by `HOLDOUT_START_TS` in config.py: `run_backtest.py` excludes
+  ts >= boundary from ALL development and walk-forward evaluation.
+- The ONLY permitted access is `evaluate_holdout.py`, which runs AT MOST
+  ONCE (marker file `.holdout_used`), and only for a version that already
+  met the full PROMISING bar on its own OOS data.
+- Survives holdout (expectancy > 0, realistic fees) → GENUINE: pause loop,
+  propose 3-week paper session. Dies on holdout → MANUFACTURED FIT: record
+  here, keep iterating. Holdout never reused.
+- v1/v2 were evaluated before quarantine on overlapping data; both are dead
+  and discarded, so no design contamination carries forward. From v3 on, the
+  quarantine is absolute.
+
 **Total variants tested: 2**
 
 ## v2 — 15-min bars, realistic fees (50bps/side)

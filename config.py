@@ -21,6 +21,18 @@ DB_PATH = "data/market.db"        # relative to project root (always 1-min)
 FEE_PER_SIDE = 0.005
 SLIPPAGE_PER_SIDE = 0.001
 
+# ---------------------------------------------------------------- v3: maker execution
+# Edge hypothesis: profit from passive limit-order execution (spread capture),
+# not directional prediction. Maker fees are ~5x cheaper than taker, which
+# structurally changes the fee equation v1/v2 died on.
+EXECUTION_MODE = "maker"          # "taker" | "maker"
+MAKER_STRATEGY = "vwap_mr"        # single regime-specialist (mean reversion)
+MAKER_REGIMES = ["chop"]          # only trade chop regimes
+MAKER_FEE_PER_SIDE = 0.001        # 10 bps maker (passive fills)
+MAKER_STOP_FEE_PER_SIDE = 0.005   # 50 bps taker (urgent stop exits)
+MAKER_OFFSET = 0.0005             # limit 5 bps better than signal price
+MAKER_MAX_WAIT_BARS = 4           # resting order valid 4 bars, then cancel
+
 # ---------------------------------------------------------------- strategies
 # v2: bar counts preserved from v1 EXCEPT VWAP_WINDOW, which is rescaled to
 # keep its 12h wall-time meaning on 15-min bars (48 x 15min = 12h). The
@@ -65,6 +77,18 @@ STARTING_BANKROLL = 10000.0   # paper starting equity (USD)
 # ---------------------------------------------------------------- backtest
 WALK_FORWARD_SPLITS = [0.40, 0.60, 0.80]  # expanding-train / next-segment-test
 MIN_TRADES_FOR_STATS = 30     # fewer OOS trades => stats unreliable, say so
+
+# ---------------------------------------------------------------- LOCKBOX
+# FINAL HOLDOUT — quarantined 2026-10-01. This data is LOCKED.
+# Range: 2026-06-14T16:29:00Z -> 2026-10-02 (most recent ~15% of history,
+# 157k+ 1-min bars per pair; larger than 3 months, per the 15%-or-3mo rule).
+# NO version may be designed, tuned, or evaluated on this data during the
+# iteration loop — not even once, not even for "just checking."
+# The ONLY permitted access is evaluate_holdout.py, which runs ONCE for a
+# version that has already met the full PROMISING bar on its own OOS data,
+# and which refuses to run a second time (marker file .holdout_used).
+# Touching this boundary to peek at holdout data invalidates the experiment.
+HOLDOUT_START_TS = 1781454540  # 2026-06-14T16:29:00Z; DO NOT CHANGE
 
 # ---------------------------------------------------------------- paper engine
 PAPER_POLL_SECONDS = 60

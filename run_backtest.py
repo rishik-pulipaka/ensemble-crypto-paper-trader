@@ -40,8 +40,15 @@ def ensure_data(pairs: list[str], years: float) -> dict:
         df = store.load(pair)
         if gran != 60:
             df = to_ohlcv(df, gran)
+        # LOCKBOX: the final holdout (ts >= HOLDOUT_START_TS) is quarantined.
+        # Development and walk-forward evaluation NEVER see it. The only
+        # permitted access is evaluate_holdout.py (one-shot, marker-guarded).
+        n_before = len(df)
+        df = df[df["ts"] < config.HOLDOUT_START_TS].reset_index(drop=True)
+        n_cut = n_before - len(df)
         print(f"[data] {pair}: {len(df)} bars @ {gran}s "
-              f"({df['datetime'].iloc[0].date()} -> {df['datetime'].iloc[-1].date()})")
+              f"({df['datetime'].iloc[0].date()} -> {df['datetime'].iloc[-1].date()}) "
+              f"[lockbox: {n_cut} holdout bars excluded]")
         data[pair] = df
     store.close()
     return data
