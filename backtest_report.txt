@@ -1,4 +1,14 @@
-generated: 2026-10-02T02:53:24.189126+00:00
+generated: 2026-10-02T02:57:17.502987+00:00
 pairs: ['BTC-USD', 'ETH-USD']  bankroll: 10000.0
-folds: [{'fold': 0, 'status': 'dead-no-positive-expectancy'}, {'fold': 1, 'status': 'dead-no-positive-expectancy'}, {'fold': 2, 'status': 'dead-no-positive-expectancy'}]
-n_trades=0
+folds: [{'fold': 0, 'status': 'ok', 'trades': 319}, {'fold': 1, 'status': 'ok', 'trades': 284}, {'fold': 2, 'status': 'ok', 'trades': 289}]
+n_trades=892
+total_pnl=-38387.99999508243
+expectancy=-43.03587443394891
+win_rate=0.242152466367713
+avg_win=52.00470248864238
+avg_loss=-73.40386942696624
+profit_factor=0.22637617492703369
+sharpe_daily=-16.32265715248943
+max_drawdown=-3.833877008560733
+final_equity=-28387.999995082486
+return_pct=-383.87999995082487

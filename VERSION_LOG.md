@@ -23,7 +23,20 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   and discarded, so no design contamination carries forward. From v3 on, the
   quarantine is absolute.
 
-**Total variants tested: 2**
+**Total variants tested: 3**
+
+## v3 — maker-only mean reversion (vwap_mr, chop, 15-min)
+- Hypothesis: spread capture. Maker fees (10bps) are 5x cheaper than taker
+  (50bps); profit from passive limit execution, not prediction. Limit buys
+  5bps below signal, filled only on touch; TP as maker limit, stops as taker.
+- Result: KILL. 892 OOS trades (good sample), expectancy -$43.04/trade,
+  win rate 24.2%, profit factor 0.23, Sharpe -16.32. Holdout untouched.
+- Lesson: maker execution multiplies existing edge; it doesn't create it.
+  vwap_mr gross was negative (-$2-10/trade) — cheaper fees on a losing
+  strategy just lose differently. Adverse selection is real: limit buys fill
+  exactly when price is falling through our level, and 24% win rate proves
+  the dip keeps dipping. Next: start from the strategy with the best GROSS
+  edge (momentum_roc +$42-46/trade) and attack fee drag via notional.
 
 ## v2 — 15-min bars, realistic fees (50bps/side)
 - Hypothesis: fee-RATIO. Bigger per-trade moves on 15-min bars make the fixed

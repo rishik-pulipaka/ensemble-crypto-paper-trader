@@ -138,6 +138,153 @@ def simulate(df: pd.DataFrame, votes: np.ndarray, entries: np.ndarray,
     return pd.DataFrame(trades)
 
 
+def simulate_maker(df: pd.DataFrame, sig: pd.DataFrame, regime_mask: np.ndarray,
+                   bankroll: float, risk_frac: float, pair: str) -> pd.DataFrame:
+    """Maker-entry backtest. Limit orders fill ONLY on price touch.
+
+    Signal at bar t (vote/entry/invalidation, already one-bar shifted by
+    generate(), so it uses data through t-1):
+    - long: resting limit BUY at entry*(1-MAKER_OFFSET), valid MAKER_MAX_WAIT_BARS
+    - short: resting limit SELL at entry*(1+MAKER_OFFSET)
+    Fill when the bar's range touches the limit; fill price = limit (zero
+    slippage — we get our price or nothing). Entry fee = MAKER_FEE_PER_SIDE.
+    Exits: take-profit as a resting maker limit at the 2R target
+    (MAKER_FEE_PER_SIDE); stop as an urgent taker exit at the invalidation
+    level (MAKER_STOP_FEE_PER_SIDE + slippage). If stop and TP are both
+    touched in one bar, the stop is assumed (conservative).
+    Unfilled orders expire after MAKER_MAX_WAIT_BARS with no cost.
+    Adverse selection is captured honestly: a buy limit fills precisely when
+    price has dropped to our level.
+    """
+    ts, op, hi, lo, cl = _arrays(df)
+    n = len(df)
+    risk = RiskManager()
+    equity = bankroll
+    positions: dict[tuple, dict] = {}
+    pending: dict[tuple, dict] = {}
+    trades: list[dict] = []
+    mfee = config.MAKER_FEE_PER_SIDE
+    sfee = config.MAKER_STOP_FEE_PER_SIDE
+    slip = config.SLIPPAGE_PER_SIDE
+    offset = config.MAKER_OFFSET
+    max_wait = config.MAKER_MAX_WAIT_BARS
+    votes = sig["vote"].to_numpy()
+    entries = sig["entry"].to_numpy()
+    invalids = sig["invalidation"].to_numpy()
+
+    for i in range(n):
+        day = pd.Timestamp(ts[i], unit="s", tz="UTC").date()
+        risk.new_day(day, equity)
+        o, h, l, c = op[i], hi[i], lo[i], cl[i]
+
+        # 1) manage open positions (stop checked before TP: conservative)
+        for key in list(positions.keys()):
+            p = positions[key]
+            d = p["dir"]
+            stopped = (d == 1 and l <= p["stop"]) or (d == -1 and h >= p["stop"])
+            tp_hit = (d == 1 and h >= p["tp"]) or (d == -1 and l <= p["tp"])
+            if not stopped and not tp_hit:
+                continue
+            if stopped:
+                px = p["stop"] * (1 - slip * d)
+                fee_rate = sfee
+                reason = "stop"
+            else:
+                px = p["tp"]  # maker limit fill at our price
+                fee_rate = mfee
+                reason = "take_profit"
+            gross = d * p["size"] * (px - p["fill"])
+            fees = p["size"] * (p["fill"] * mfee + px * fee_rate)
+            pnl = gross - fees
+            equity += pnl
+            risk.register_close(pnl)
+            trades.append({
+                "pair": pair, "direction": d,
+                "entry_ts": int(p["entry_ts"]), "exit_ts": int(ts[i]),
+                "entry_px": p["fill"], "exit_px": px,
+                "size": p["size"], "pnl": pnl,
+                "exit_reason": reason, "equity": equity,
+            })
+            del positions[key]
+
+        # 2) manage pending orders: fill on touch, else expire
+        for key in list(pending.keys()):
+            o_ = pending[key]
+            if i > o_["expiry_bar"]:
+                del pending[key]
+                continue
+            d = o_["dir"]
+            touched = (d == 1 and l <= o_["limit"]) or (d == -1 and h >= o_["limit"])
+            if not touched:
+                continue
+            fill = o_["limit"]
+            stop = o_["stop"]
+            per_unit = abs(fill - stop)
+            if per_unit <= 0:
+                del pending[key]
+                continue
+            size = (o_["risk_usd"]) / per_unit
+            size = min(size, equity / fill)  # 1x cap, no leverage
+            if size * fill < 1.0:
+                del pending[key]
+                continue
+            tp = fill + 2 * (fill - stop) if d == 1 else fill - 2 * (stop - fill)
+            # sanity: stop/TP must bracket the fill on the correct sides
+            if d == 1 and not (stop < fill < tp):
+                del pending[key]
+                continue
+            if d == -1 and not (tp < fill < stop):
+                del pending[key]
+                continue
+            ok, _ = risk.can_open()
+            if not ok:
+                del pending[key]
+                continue
+            positions[key] = {"dir": d, "size": size, "fill": fill,
+                              "stop": stop, "tp": tp, "entry_ts": ts[i]}
+            risk.register_open()
+            del pending[key]
+
+        # 3) maybe place a new resting order
+        v = int(votes[i])
+        if v == 0 or not regime_mask[i]:
+            continue
+        key = (pair, v)
+        if key in positions or key in pending:
+            continue
+        entry_ref, inval_ref = entries[i], invalids[i]
+        if not (np.isfinite(entry_ref) and np.isfinite(inval_ref)):
+            continue
+        limit = entry_ref * (1 - offset * v)
+        # stop must be on the correct side of the limit price
+        if v == 1 and not (inval_ref < limit):
+            continue
+        if v == -1 and not (inval_ref > limit):
+            continue
+        if abs(limit - inval_ref) <= 0:
+            continue
+        pending[key] = {"dir": v, "limit": limit, "stop": float(inval_ref),
+                        "expiry_bar": i + max_wait - 1,
+                        "risk_usd": equity * risk_frac}
+
+    # close leftovers at last close (taker exit, conservative)
+    for key, p in positions.items():
+        d = p["dir"]
+        px = cl[-1] * (1 - slip * d)
+        gross = d * p["size"] * (px - p["fill"])
+        fees = p["size"] * (p["fill"] * mfee + px * sfee)
+        pnl = gross - fees
+        equity += pnl
+        trades.append({
+            "pair": pair, "direction": d,
+            "entry_ts": int(p["entry_ts"]), "exit_ts": int(ts[-1]),
+            "entry_px": p["fill"], "exit_px": px,
+            "size": p["size"], "pnl": pnl,
+            "exit_reason": "eod", "equity": equity,
+        })
+    return pd.DataFrame(trades)
+
+
 def single_strategy_stats(df: pd.DataFrame, sig: pd.DataFrame, family: str,
                           regime: pd.Series, bankroll: float) -> dict:
     """Per-strategy, per-regime expectancy on a train window (1% fixed risk)."""
@@ -252,9 +399,45 @@ def train_ensemble_stats(train_data, strategies, weights, bankroll):
     return float(wr), float(payoff)
 
 
+def walk_forward_maker(data: dict[str, pd.DataFrame], strategies,
+                     bankroll: float) -> dict:
+    """Maker-mode walk-forward: single regime-specialist strategy, OOS only.
+
+    Same expanding-train / next-segment-test fold structure as the taker path
+    (so the OOS segments are identical), but the train segment is unused —
+    there are no ensemble weights to fit. The strategy and its parameters
+    were fixed before seeing any of this data.
+    """
+    strats = {s.name: s for s in strategies}
+    strat = strats[config.MAKER_STRATEGY]
+    n = min(len(df) for df in data.values())
+    data = {p: df.iloc[-n:].reset_index(drop=True) for p, df in data.items()}
+    splits = [int(n * f) for f in config.WALK_FORWARD_SPLITS]
+    oos_trades: list[pd.DataFrame] = []
+    fold_info = []
+    for k, s in enumerate(splits):
+        e = splits[k + 1] if k + 1 < len(splits) else n
+        fold_trades = []
+        for pair, df in data.items():
+            test = df.iloc[s:e].reset_index(drop=True)
+            sig = strat.generate(test)
+            reg = classify(test)
+            mask = reg.isin(config.MAKER_REGIMES).to_numpy()
+            t = simulate_maker(test, sig, mask, bankroll,
+                               config.RISK_PER_TRADE, pair)
+            fold_trades.append(t)
+        ft = pd.concat(fold_trades, ignore_index=True) if fold_trades else pd.DataFrame()
+        fold_info.append({"fold": k, "status": "ok", "trades": len(ft)})
+        oos_trades.append(ft)
+    trades = pd.concat(oos_trades, ignore_index=True) if oos_trades else pd.DataFrame()
+    return {"trades": trades, "folds": fold_info, "bars": n}
+
+
 def walk_forward(data: dict[str, pd.DataFrame], strategies,
                  bankroll: float) -> dict:
     """Expanding-train / next-segment-test. Returns OOS trades + diagnostics."""
+    if config.EXECUTION_MODE == "maker":
+        return walk_forward_maker(data, strategies, bankroll)
     # align on shortest pair
     n = min(len(df) for df in data.values())
     data = {p: df.iloc[-n:].reset_index(drop=True) for p, df in data.items()}
