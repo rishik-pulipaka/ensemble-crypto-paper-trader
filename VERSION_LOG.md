@@ -142,3 +142,67 @@ treated as noise until proven otherwise on 200+ out-of-sample trades.
   proven, fees hand-verified, trailing stop verified, risk bounded,
   fresh-checkout clean).
 - **Total variants tested: 7** (v1-v6 intraday + swing-v1).
+
+---
+
+## KALSHI GAUNTLET — binary prediction markets (2026-10-02)
+
+New module `kalshi/`: event-study engine on settled binary markets. Buy YES at
+ask / sell YES at bid, hold to settlement, exact Kalshi taker fee
+(ceil(0.07*P*(1-P)) per contract). Data: 6,920 settled markets / 107k daily
+candles across KXNFLGAME, KXNBAGAME, KXNHLGAME, KXFED, KXCPI (public
+unauthenticated endpoints; KXBTC/KXETH/KXINX dropped — 40k+ markets paginated,
+zero expired before the lockbox, pagination black hole; KXNBA/KXNHL are now
+championship futures, game moneylines live under KXNBAGAME/KXNHLGAME).
+Lockbox: markets expiring >= 2026-07-02 quarantined; one-shot
+`kalshi/evaluate_lockbox.py` with marker guard. **Lockbox untouched — nothing
+earned it.** Walk-forward: 70/30 split by expiry for adaptive versions
+(V2/V4); V1/V3 params frozen a priori (OOS by construction).
+
+**Total variants tested: 11 (6 crypto + 1 swing + 5 kalshi, counting V5)**
+
+### kalshi-v1 — favorite-longshot bias fade (buy YES, ask >= 85c, <=14d to expiry)
+- Hypothesis: crowd underprices high-probability contracts; buy the favorite.
+- Result: KILL. 298 trades, expectancy -3.43c/contract, win rate 90.9%,
+  avg win $0.05 vs avg loss -$0.92, PF 0.59, Sharpe/trade -0.121.
+- Lesson: average FILL was ~94c, not 85c — the rule catches markets steaming
+  toward the favorite (momentum), not value. Buying after the move. KXCPI
+  (-8.35c) and KXNBAGAME (-6.83c) were clear losers; KXFED/KXNHLGAME ~flat.
+
+### kalshi-v2 — V1 + fit-learned filters (eval window only)
+- Filters from V1 fit window (n=226): exclude {KXCPI, KXNBAGAME},
+  market volume >= 100k (candle volumes unpopulated in dataset; TTE showed no
+  exploitable variation).
+- Result: KILL (thin sample). 41 eval trades, +0.59c/contract, PF 1.13 —
+  directionally better but n<100, cannot trust.
+
+### kalshi-v3 — tail-selling (sell YES, bid <= 15c)
+- Hypothesis: harvest longshot overpricing premium.
+- Result: KILL. 317 trades, -2.97c/contract raw; -11.57c with the measured
+  -8.6c adverse-selection haircut. Win rate 77% — tails hit 23% when priced
+  at 15c (adverse selection: informed flow picks off the offer). All series
+  negative. PF 0.62.
+
+### kalshi-v4 — event-type specialization (V1 rule on KXFED+KXNHLGAME only)
+- V3 showed no viable sell-side category; V1's least-bad buy-side series
+  were KXFED (-0.27c) and KXNHLGAME (-0.16c) on fit.
+- Result: KILL (thin sample). 41 eval trades, +0.59c — identical to V2
+  (KXFED had no qualifying eval trades); n<100, cannot trust.
+
+### kalshi-v5 — best-candidate filter set on all dev (EXPLORATORY, in-sample)
+- Nothing passed, so no true ensemble exists. V5 tests V2's filters on all
+  dev data for max sample — explicitly in-sample, cannot pass by design.
+- Result: KILL. 128 trades, +0.02c/contract, PF exactly 1.00, Sharpe +0.001.
+  The faint V2 signal (+0.59c on 41) died on contact with more data. ~Zero
+  edge, honestly measured.
+
+### KALSHI TRAJECTORY ASSESSMENT
+The fee problem that killed crypto is genuinely milder here (fees were 63%
+of gross on V2's thin sample, not 96%), but there is no gross edge underneath
+on either side: favorites are efficiently priced (V1), tails are adversely
+selected (V3). The only positive readings came from n=41 eval samples and
+collapsed to exactly zero (+0.02c, PF 1.00) with n=128. Five versions,
+zero passes, lockbox untouched, no paper test earned. The prediction-market
+game is structurally different from crypto but equally unforgiving at retail:
+the crowd's probability estimates are well-calibrated where it matters, and
+the documented biases don't survive the fee + adverse-selection gauntlet.

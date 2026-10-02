@@ -144,3 +144,44 @@ One genuine design bug was found and fixed during QA (vol-targeting let a
 3xATR stop risk ~10%/trade; corrected to true 1%-risk turtle sizing —
 a spec-compliance fix, not optimization).
 Full report: `swing_report.txt`. Lockbox untouched (nothing earned it).
+
+---
+
+# Kalshi gauntlet (kalshi-v1..v5) — binary prediction markets
+
+A structurally different game from crypto: binary $1/$0 settlement (pure
+probability estimation), Kalshi taker fee = ceil(0.07*P*(1-P)) per contract,
+episodic event-driven markets. Kalshi only (Polymarket geo-blocks US).
+
+- **Data** (`kalshi/kalshi_data.py`, public unauthenticated endpoints):
+  6,920 settled markets / 107k daily candles across KXNFLGAME, KXNBAGAME,
+  KXNHLGAME, KXFED, KXCPI, cached in `data/kalshi.db`. KXBTC/KXETH/KXINX
+  dropped (40k+ markets paginated, zero expired before lockbox).
+- **Engine** (`kalshi/engine.py`): event-study backtest. Signal on daily
+  candle close, fill at next open, hold to settlement. Proven by
+  `kalshi/tests/test_kalshi_no_lookahead.py` and `kalshi/qa_kalshi.py`.
+- **Validation**: `python3 -m kalshi.validate --version vN`. Exit 0 = PASS
+  (positive OOS expectancy, 100+ trades). Exit 2 = KILL. V1/V3 params frozen
+  a priori; V2/V4 filters chosen once from V1-V3 fit-window (70%) diagnostics,
+  evaluated on the eval window (30%) only.
+- **Lockbox**: markets expiring >= 2026-07-02 quarantined; only
+  `kalshi/evaluate_lockbox.py` may touch them, once, marker-guarded.
+
+## kalshi verdict: ALL KILL (2026-10-02)
+
+| version | trades | exp/contract | win% | PF | verdict |
+|---------|--------|-------------|------|-----|---------|
+| v1 (buy 85c+ favorites) | 298 | -3.43c | 90.9% | 0.59 | KILL |
+| v2 (v1 + fit filters, eval only) | 41 | +0.59c | 95.1% | 1.13 | KILL (thin) |
+| v3 (sell <=15c tails) | 317 | -2.97c | 77.0% | 0.62 | KILL |
+| v3 + adv-selection haircut | 317 | -11.57c | 24.3% | 0.05 | KILL |
+| v4 (v1 on KXFED+KXNHLGAME, eval) | 41 | +0.59c | 95.1% | 1.13 | KILL (thin) |
+| v5 (best filters, all dev, exploratory) | 128 | +0.02c | 94.5% | 1.00 | KILL |
+
+Key lessons: V1's average fill was ~94c not 85c — it catches markets steaming
+toward the favorite (momentum), not value. V3's tails hit 23% when priced at
+15c — adverse selection is real and measured. The only positive readings
+(V2/V4, +0.59c) came from n=41 eval samples and collapsed to exactly +0.02c
+(PF 1.00) with n=128. Favorites are efficiently priced; tails are adversely
+selected; the documented biases don't survive fees + adverse selection at
+retail. Lockbox untouched — nothing earned it. No paper test.
